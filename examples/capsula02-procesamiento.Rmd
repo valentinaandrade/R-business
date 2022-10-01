@@ -1,0 +1,295 @@
+---
+title: "Magíster en Métodos para la Investigación - Universidad Diego Portales"
+author: "por Mónica Gerber y Valentina Andrade"
+output:
+  rmdformats::material:
+    highlight: kate
+    self_contained: true
+    code_folding: show
+    thumbnails: true
+    gallery: true
+    fig_width: 4
+    fig_height: 4
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
+klippy::klippy(position = c('bottom', 'right'))
+setwd("C:/Users/Valentina Andrade/Dropbox/3. Docencia/Regresion Multiple UDP/capsulas/capsula02")
+```
+
+# Cápsula 2. Regresión lineal en R
+
+## Objetivo de la cápsula
+
+Esta cápsula tiene por objetivo revisar algunos pasos para reportar estadísticos descriptivos y estimar una regresión lineal. Para ello deben trabajar con la base de datos que procesaron en la **cápsula 1** que corresponde a los datos de  [ENE](www.ine.cl).
+
+## Pasos de la cápsula
+
+1. Cargar librerías 
+2. Cargar datos
+3. Descripción de variables
+4. Asociación de variables categóricas
+5. Correlación
+6. Regresión lineal
+7. Video tutorial
+
+
+# 1. Cargar librerías 
+
+1. Crear código R script
+
+<span class="sidenote">Archivo de código R: archivo con extensión .R donde se almacena el código de análisis. Para generarlo desde RStudio: menú File > Save, y darle nombre (recordar: sin tilde ni ñ, y evitar espacios) </span>
+
+```{r librerias, echo=FALSE, out.width='80%', fig.asp=.80, fig.align='center'}
+knitr::include_graphics("images/imagen6.png")
+```
+
+
+2. Cargar librerías
+En R se debe **instalar** librerías (solo 1 vez, con `install.packages("librería")`), y luego **cargarlas** cada vez que es necesario usarlas (con `library(librería)`).
+
+```{r, eval = F}
+install.packages("haven") # Para cargar bases de datos en formato SPSS, STATA y csv
+install.packages("dplyr") # Para manipular bases de datos
+install.packages("car") # Para recodificar variables
+install.packages("summarytools") # Para estadisticos descriptivos
+install.packages("ggpubr") # Grafico correlacion
+```
+
+```{r, message = F, warning = F}
+library(haven)
+library(dplyr)
+library(car)
+library(summarytools)
+library(ggpubr)
+```
+
+Para esta sesión vamos a utilizar Las librerías que vamos a utilizar son:
+
+- `haven`: cargar de base de datos
+- `dplyr`: ajuste general de datos
+- `car`: principalmente la función `recode` para recodificar/agrupar valores de variable
+- `summarytools`: para tabla descriptiva
+- `ggpubr`: grafico de correlacion
+
+
+# 2. Cargar datos
+
+En esta cápsula trabajaremos con los datos de **ENE 2020, trimestre marzo-abril-mayo**. Para ello, utilizaremos la función `load` que permite leer datos en formato .RData (R)
+
+```{r}
+load(file = "ene.RData")
+```
+
+La base de datos aparece como un objeto en "Environment", con el nombre "ene_proc" como le hemos asignado
+
+
+## Explorar datos
+
+Podremos notar en "Environment" que tenemos  `r dim(ene_proc)[1]` casos y `r dim(ene_proc)[2]` variables.
+
+```{r}
+dim(ene_proc) 
+```
+Para mirar la base de datos entera ocupamos (en formato planilla)
+```{r, include = T, echo =FALSE}
+View(ene_proc)
+```
+
+Podemos renombrar la base como "ene" y remover ene_proc para facilitar la escritura
+```{r}
+ene <- ene_proc ; remove(ene_proc)
+```
+
+
+En el caso de esta base, `r dim(ene)[1]` casos y `r dim(ene)[2]` variables
+
+Recordando el contenido de cada variable preparada en la capsula 1:
+
+```{r}
+names(ene)
+```
+
+* [`horas`] = Número de horas trabajadas a la semana
+
+* [`sexo`] = Sexo (O = Hombre; 1 = Mujer)
+
+* [`tramo_edad`] = Tramos de edad del 1 a 12
+
+* [`n_educ`] = Nivel educacional del 1 al 9
+
+Para ver que significa cada tramo ver el Libro de Códigos de [ENE](www.ine.cl)
+
+
+# 3. Descripción de variables
+
+Esta tercera opción nos ofrece una tabla aún más detallada, con gráficos para cada variable, las frecuencias para cada valor, y las etiquetas de las variables, por lo que es muy recomendable.
+
+Se específica de la siguiente manera:
+
+```{r eval=FALSE }
+view(dfSummary(ene, headings=FALSE))
+```
+
+```{r echo=FALSE}
+print(dfSummary(ene, headings = FALSE), style = "grid", 
+          graph.magnif = 0.75, valid.col = FALSE, method = "render")
+```
+
+# 4. Asociación de variables
+
+Dado que las hipótesis de investigación corresponden a asociación entre variables, antes de realizar el contraste de hipótesis se suele presentar un análisis descriptivio que explora las asociaciones entre variables.
+
+La forma de explorar las asociaciones entre variables dependen de la naturaleza de las variables que se asocian:
+
+- Variables categóricas: tabla de contingencia
+- Variable categórica y continua: tabla de promedios por cada categoría
+- Variables continuas: correlaciones.
+
+
+## 4.1  Tablas de contingencia para variables categóricas
+
+Para tablas de contingencia categóricas utilizaremos la función   `ctable`, de la librería `summarytools`. Como podremos notar, podemos conocer la división por sexo en cada nivel educacional (proporción por columnas)
+
+```{r}
+ctable(ene$n_educ, ene$sexo, method = "render")
+```
+
+
+En caso de que haga sentido podemos conocer la proporción por columnas. La forma de cambiar la proporción es con el argumento *prop* donde si coloco  “r” es para filas, “c” para columnas.
+
+```{r, eval = F}
+ctable(ene$n_educ, ene$sexo, prop = "c")
+```
+
+## 4.2 Tablas de promedio de variable continua por una categóricas
+
+En ejemplo vamos a explorar datos de nuestra variable de horas de trabajo `horas` por los niveles educacionales `n_educ`
+
+Una forma rápida de explorar esto es mediante la función `stby`, que nos entrega de manera simple los estadísticos descriptivos (promedio, desviación, minimo, mediana, y máximo) de una variable por otra:
+
+```{r}
+with(ene, stby(data = horas, INDICES = n_educ, 
+                   FUN = descr, stats = c("mean", "sd", "min", "med", "max")))
+```
+
+Aquí vemos en promedio de _horas_ para cada uno de los 9 niveles de la variable educación _n_educ_.
+
+# 5. Correlaciones (variables continuas)
+
+- El _coeficiente de correlación_ mide la fuerza de la relación lineal entre dos variable continuas. Esta puede ser:
+
+  - _positiva_: a medida que aumenta una, aumenta la otra (ej: estatura y edad)
+  - _negativa_: a medida que una aumenta, disminuye la otra (ej: tiempo dedicado al estudio y probabilidad de reprobar)
+  - _neutra_: no hay asociación entre variables.
+
+- El rango de variación del coeficiente de correlación va desde -1 (correlación negativa perfecta) y 1 (correlación positiva perfecta).
+
+- En el coeficiente de correlación se analiza tanto su tamaño como su significación estadística.
+
+En lo que sigue nos concentraremos en el coeficiente de correlación más utilizado que es el de **Pearson**, que se aplica cuando las variables son de naturaleza continua.
+
+## 5.1 Tablas/matrices de correlación
+
+Las correlaciones entre variables se presentan en general en modo de matrices, es decir, las variables se presentan en las filas y las columnas y en las celdas donde se cruzan los pares de variables se muestra su coeficiente de correlación.
+
+En su forma simple en R se aplica la función `cor` a la<span class="sidenote">cor</span> base de datos, y la guardamos en un objeto que le damos el nombre M para futuras operaciones. Esta solo puede contener las variables continuas. Imaginemos que t_edad es continua 
+
+
+```{r}
+ene_correlacion <- select(ene, horas, tramo_edad) # Seleccionamos las variables
+M <- cor(ene_correlacion, use="complete.obs") # Creamos objeto para correlacionar
+M
+```
+
+Con esto podemos ver que entre las horas de trabajo y el nivel educacional hay una correlación positiva (dirección) y muy débil (tamaño de efecto) según los criterios indicados por Cohen (1988).
+
+## 5.2 Grafico de correlacion
+
+Finalmente, también se puede representar la correlación entre dos variables en un gráfico de nube de puntos o scatterplot:<span class="sidenote">sjPlot::plot_scatter</span>
+
+```{r}
+ggscatter(ene, y = "horas", x= "tramo_edad")
+```
+
+Donde:
+- y son las horas y x es el tramo educacional
+- cada punto representa un caso
+- como nueva variable de tramo no es realmente una variable continua y aemás nuestra asociación es muy baja, nuestra nube de puntos no tiene ninguna forma. 
+
+![](https://www.onlinemath4all.com/images/scatterplot6.png)
+
+
+# 6. Regresión
+
+El modelo de regresión se representa con una ecuación de la recta, o recta de regresión. Esta recta representa los valores predichos para Y según los distintos valores de X:
+
+$$\widehat{Y}=b_{0} +b_{1}X $$
+
+Donde
+
+- $\widehat{Y}$ es el valor estimado/predicho de $Y$
+- $b_{0}$ es el **intercepto** de la recta (el valor de Y cuando X es 0)
+- $b_{1}$ es el **coeficiente de regresión**, que nos dice cuánto aumenta Y por cada punto que aumenta X (pendiente)
+
+La función para estimar regresión en `R` es `lm` (linear model). Su forma general es:
+
+```
+objeto=lm(dependiente ~ independiente, data=datos)
+```
+
+Donde
+
+- objeto: el nombre (cualquiera) que le damos al objeto donde se guardan los resultados de la estimación
+- dependiente / independiente: los nombres de las variables en los datos
+- data = el nombre del objeto de nuestros datos en R
+
+## 6.1 Regresión simple
+
+Imaginemos que queremos construir una regresión simple con variable dependiente horas y con variable predictora tramo de edad
+
+```{r}
+reg1 <-lm(horas ~ tramo_edad, data = ene)
+```
+Con esta operación ya estimamos nuestra primera regresión simple. Para ver la estimación de los parámetros principales (intercepto y pendiente) simplemente ejecutamos el nombre del objeto:
+
+```{r}
+summary(reg1)
+```
+
+
+## 6.2 Regresión múltiple
+
+Ahora bien, si quiero que mi regresión ses **multiple** solo debo añadirle las variables con un **+**
+
+```{r}
+reg2 <-lm(horas ~ tramo_edad + n_educ, data = ene)
+```
+Con esta operación ya estimamos nuestra primera regresión múltiple. Para ver la estimación de los parámetros principales (intercepto y pendiente) simplemente ejecutamos el nombre del objeto con un summary
+
+```{r}
+summary(reg2)
+```
+
+
+# ¡Ahora te toca a ti!
+
+Realiza este mismo ejercicio seleccionando y codificando variables que sean de tu interés en ENE
+
+El archivo de código R de esta cápsula se puede descargar [aquí]
+
+# Video tutorial de la capsula
+
+<div style="width: 100%; height: 600px; overflow: hidden;">
+<video  style="width: 100%;" controls>
+<source src="https://www.dropbox.com/s/wawuwj5tm3054oj/capsula02.mp4?raw=1" type="video/mp4">
+</video>
+</div>
+
+**¿Tienes dudas?**
+
+Puedes escribirme a: [valentina.vasquez.a@ug.uchile.cl](valentina.vasquez.a@ug.uchile)
+
+Si necesitas ayuda con tu código comparte tu link conmigo e indicame cuál es la linea de código que tiene problemas

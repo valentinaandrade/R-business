@@ -1,0 +1,269 @@
+---
+title: "Magíster en Métodos para la Investigación - Universidad Diego Portales"
+author: "por Mónica Gerber y Valentina Andrade"
+output:
+  rmdformats::material:
+    highlight: kate
+    self_contained: true
+    code_folding: show
+    thumbnails: true
+    gallery: true
+    fig_width: 4
+    fig_height: 4
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
+klippy::klippy(position = c('bottom', 'right'))
+setwd("C:/Users/Valentina Andrade/Dropbox/3. Docencia/Regresion Multiple UDP/capsulas/capsula01")
+```
+
+# Cápsula 1. Preparación de datos en R
+
+## Objetivo de la cápsula
+
+Esta cápsula tiene por objetivo revisar algunos pasos básicos para la preparación de datos en R. Estos procedimientos son necesarios para el análisis, específicamente, de regresiones. Al final de esta cápsula podrás saber cómo limpiar una base de datos en R. En esta cápsula trabajaremos con los datos de [ENE](www.ine.cl).
+
+## Pasos de la cápsula
+
+0. Introducción a RStudio Cloud
+1. Cargar librerías 
+2. Cargar datos
+3. Selección de variables
+4. Procesamiento de variables: para cada variable seleccionada realizaremos
+
+  + Descriptivos
+  + Recodificación (si es necesario)
+  + Etiquetamiento
+  
+5. Creación de variables
+6. Guardar base de datos procesada
+
+# 0. Introducción a RStudio Cloud
+
+La plataforma [RStudio Cloud](https://rstudio.cloud/) se define como un *Cloud computing*, es decir, es como  *“la nube”* del software. En RStudio Cloud podrás cargar bases de datos, crear tus códigos de procesamiento y análisis. 
+
+## Estructura básica de RStudio Cloud 
+
+1. Debes iniciar sesión con un cuenta de correo electrónico
+
+2. Debes crear un **project**. Un *project* es la unidad fundamental de trabajo en RStudio Cloud. Reúne el código R, las librerías y los archivos de datos.
+Para crear un nuevo proyecto desde cero, simplemente debes pulsar el botón "New Proyect".
+
+```{r project, echo=FALSE, out.width='60%', fig.asp=.60, fig.align='center'}
+knitr::include_graphics("images/image1.png")
+```
+
+3. De manera predeterminada, cualquier proyecto que creas sólo puede ser accedido por ti. **Para compartir un proyecto** con otros, abra el proyecto, haga clic en el botón "Project Settings" (el engranaje en la parte superior derecha), seleccione el panel "Access" y cambie "Who can view this project" a "Everyone".
+
+```{r , echo=FALSE, out.width='60%', fig.asp=.60, fig.align='center'}
+knitr::include_graphics("images/image2.png")
+```
+
+Luego, al lado del engranaje puedes seleccionar los tres puntos y presionar "Share Project Link" e ingresar el correo electrónico de la persona a la que quieres compartir tu proyecto. Por ejemplo, si quieres recibir ayuda de la ayudante debes ingresar: [valentina.vasquez.a@ug.uchile.cl](valentina.vasquez.a@ug.uchile.cl)
+
+```{r , echo=FALSE, out.width='60%', fig.asp=.60, fig.align='center'}
+knitr::include_graphics("images/image4.png")
+```
+
+4. Cargar base de datos a RStudio Cloud
+
+Para cargar alguno de estos elementos solo debes ir a "Upload". Por ejemplo, si necesitas cargar la base de datos necesaria para tu proyecto presiona el botón "Upload" y se abriran tus archivos del computador. 
+
+
+```{r upload, echo=FALSE, out.width='80%', fig.asp=.80, fig.align='center'}
+knitr::include_graphics("images/imagen5.png")
+```
+
+
+# 1. Cargar librerías 
+
+1. Crear código R script
+
+<span class="sidenote">Archivo de código R: archivo con extensión .R donde se almacena el código de análisis. Para generarlo desde RStudio: menú File > Save, y darle nombre (recordar: sin tilde ni ñ, y evitar espacios) </span>
+
+```{r librerias, echo=FALSE, out.width='80%', fig.asp=.80, fig.align='center'}
+knitr::include_graphics("images/imagen6.png")
+```
+
+
+2. Cargar librerías
+En R se debe **instalar** librerías (solo 1 vez, con `install.packages("librería")`), y luego **cargarlas** cada vez que es necesario usarlas (con `library(librería)`).
+
+```{r, eval = F}
+install.packages("haven") # Para cargar bases de datos en formato SPSS, STATA y csv
+install.packages("dplyr") # Para manipular bases de datos
+install.packages("car") # Para recodificar variables
+```
+
+```{r, message = F, warning = F}
+library(haven)
+library(dplyr)
+library(car)
+```
+
+Para esta sesión vamos a utilizar Las librerías que vamos a utilizar son:
+
+- `haven`: cargar de base de datos
+- `dplyr`: ajuste general de datos
+- `car`: principalmente la función `recode` para recodificar/agrupar valores de variable
+- `stargazer`: para tabla descriptiva
+
+
+# 2. Cargar datos
+
+En esta cápsula trabajaremos con los datos de **ENE 2020, trimestre marzo-abril-mayo**. Para ello, utilizaremos la función `read_sav` de la librería `haven` que permite leer datos en formato .sav (SPSS)
+
+```{r}
+ene <- read_sav(file = "ENE 2020 MAM.sav")
+```
+
+La base de datos aparece como un objeto en "Environment", con el nombre "ene" como le hemos asignado
+
+<span class="sidenote">Para cargar bases de:
+- STATA (formato .dta) ocupar `read_dta`
+- CSV (formato .csv) ocupar `read_csv`
+</span>
+
+## Explorar datos
+
+Podremos notar en "Environment" que tenemos  `r dim(ene)[1]` casos y `r dim(ene)[2]` variables.
+
+```{r}
+dim(ene) 
+```
+Para mirar la base de datos entera ocupamos (en formato planilla)
+```{r, include = T, echo =FALSE}
+View(ene)
+```
+
+
+# 3. Selección de variables
+
+Sin embargo, solo trabajaremos con algunas variables cuyo nombre sabemos por el libro de códigos o cuestionario. 
+
+Mediante la función `select` de `dplyr`, seleccionamos cada una de nuestras variables de interés y creamos una nueva base con el nombre `ene_proc`, donde "proc" hace referencia a base procesada:
+
+
+```{r}
+ene_proc <- select(ene, #base original
+                     c2_1_2, # horas semana
+                     sexo, tramo_edad, cine) #sexo, edad, nivel educación (CINE)
+```
+
+Para saber las variables que contiene una base utilizamos `names`
+
+```{r}
+names(ene_proc)
+```
+
+
+# 4. Procesamiento de variables
+
+Muchas veces nuestras variables necesitan ser recoficadas por los casos perdidos o por conveniencia. Por ello realizaremos los siguientes procedimientos para cada variable: 
+
+  + Descriptivos
+  + Recodificación (si es necesario)
+  + Etiquetamiento
+  
+## 4.1 Descriptivos
+
+Para ver los estadísticos descriptivos univariados de mi base de datos ocupo `summary` 
+```{r}
+summary(ene_proc)
+```
+
+
+Podemos notar que en algunas variables tenemos valores asociados a "No responde" (999 y 888), NA's, valores muy pequeños  o no está etiquetado el sexo. Por ello, esto lo abordaremos en la **recodificación**.
+
+## 4.2 Recodificación 
+
+Para recodificar utilizamos la función `recode`, de la librería `car`
+
+```{r}
+# Para cine
+ene_proc$cine <- car::recode(ene_proc$cine, c("c(999,888)=NA"))
+
+#Para sexo
+ene_proc$sexo <- as.numeric(ene_proc$sexo)
+ene_proc$sexo <- car::recode(ene_proc$sexo, c("'1'='Hombre';'2'='Mujer'"))
+
+#Para horas
+ene_proc$c2_1_2 <- car::recode(ene_proc$c2_1_2, c("c(999,888)=NA"))
+```
+
+## Etiquetamiento
+Puede que una variable tenga un nombre poco indicativo. Para modificar ello:
+```{r}
+ene_proc <- rename(ene_proc,
+                     "horas"=c2_1_2, #horas
+                                    "n_educ" =cine) #nivel educacional
+```
+
+# 5. Creación de variables
+
+Imaginemos que queremos recodificar la variable edad en **tramos de edad**
+
+- 1: 15 a 19 años
+- 2: 20 a 24 años
+- 3: 25 a 29 años
+- 4: 30 a 34 años
+- 5: 35 a 39 años
+- 6: 40 a 44 años
+- 7: 45 a 49 años
+- 8: 50 a 54 años
+- 9: 55 a 59 años
+- 10: 60 a 64 años
+- 11: 65 a 69 años
+- 12: 70 años o más
+
+```{r}
+ene_proc$tramo_edad <- as.numeric(ene_proc$tramo_edad)
+ene_proc$t_edad <- car::recode(ene_proc$tramo_edad, c("1:4='Jovenes';5:9='Adultos';10:12='Adultos mayores'"))
+```
+
+Para verificar
+```{r}
+table(ene_proc$t_edad)
+```
+
+
+# 6. Guardar base de datos procesada
+
+Antes de guardar nuestra base de datos verificamos la distribución de nuestras variables
+
+```{r}
+summary(ene_proc)
+```
+
+Como podemos notar ahora nuestras variables `sexo` y `t_edad` aparecen como variables categóricas. Nuestras variables `horas` y `n_educ` aparecen con sus NA's. 
+
+Luego, para guardar nuestra base de datos.
+
+```{r}
+save(ene_proc,file = "ene.RData")
+```
+
+Notaremos que esta se ha guardado en nuestra pestaña "Files". Tal como se indicó en el tutorial para descargarla localmente debe seleccionar "More" y luego "Export" podrán obtener su base de datos. 
+
+
+# ¡Ahora te toca a ti!
+
+Realiza este mismo ejercicio seleccionando y codificando variables que sean de tu interés en ENE
+
+El archivo de código R de esta cápsula se puede descargar [aquí]
+
+# Video tutorial de la capsula
+
+<div style="width: 100%; height: 600px; overflow: hidden;">
+<video  style="width: 100%;" controls>
+<source src="https://www.dropbox.com/s/m77wauwyxk2xn7y/capsula01.mp4?raw=1" type="video/mp4">
+</video>
+</div>
+
+**¿Tienes dudas?**
+
+Puedes escribirme a: [valentina.vasquez.a@ug.uchile.cl](valentina.vasquez.a@ug.uchile)
+
+Si necesitas ayuda con tu código comparte tu link conmigo e indicame cuál es la linea de código que tiene problemas

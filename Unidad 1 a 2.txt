@@ -1,0 +1,28 @@
+Esquema:
+
+
+Semana 1: 
+
+    Modelo de regresión poblacional múltiple: presentación e interpretación de parámetros 
+    Estimación por MCO: valores ajustados y residuos. 
+    Función de regresión muestral: interpretación de coeficientes y predicción. 
+
+ 
+
+Semana 2: 
+
+    Medidas de bondad del ajuste: R2, R2_ajustada y error estándar de la regresión. 
+    Supuestos del modelo clásico: linealidad en parámetros, muestreo aleatorio, colinealidad imperfecta, media condicional nula, homocedasticidad y normalidad de los errores. 
+    Propiedades de los estimadores: insesgamiento y teorema de GM. 
+
+ 
+
+Semana 3: 
+
+    Inferencia: hipótesis nula y alternativa (bilateral y unilateral), regla de decisión, prueba t generalizada (es decir, para evaluar H0: beta_j = alpha_j, con alpha_j!=0), prueba para igualdad de parámetros, valor-p e intervalo de confianza. 
+
+ 
+
+Semana 4: 
+
+    Inferencia (cont.): hipótesis conjuntas y restricciones de exclusión, estadístico F en base a SCR y R2, contraste de regresión (o prueba significancia global). 
