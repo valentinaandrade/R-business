@@ -4,73 +4,125 @@
 # 1. Cargar librerías
 #En R se debe **instalar** librerías (solo 1 vez, con `install.packages("librería")`), y luego **cargarlas** cada vez que es necesario usarlas (con `library(librería)`).
 
-install.packages("haven") # Para cargar bases de datos en formato SPSS, STATA y csv
 install.packages("dplyr") # Para manipular bases de datos
-install.packages("car") # Para recodificar variables
+install.packages("sjPlot")
 
-library(haven)
 library(dplyr)
-library(car)
+library(sjPlot)
 
 # 2. Cargar datos
-#En esta cápsula trabajaremos con los datos de **ene 2017**. 
-#Para ello, utilizaremos la función `read_sav` de la librería `haven`
+#En esta cápsula trabajaremos con los datos de **Supermarket sales** publicado por Aung Pyae (https://www.kaggle.com/datasets/aungpyaeap/supermarket-sales?resource=download). 
+#Para ello, utilizaremos la función `read.csv` de la librería `haven`
 
-ene <- read_sav(file = "ENE 2020 MAM.sav")
-
-#STATA (formato .dta) ocupar read_dta
-#CSV (formato .csv) ocupar read_csv
+data <- read.csv("input/supermarket_sales - Sheet1.csv")
 
 ## Explorar datos
-dim(ene) 
-View(ene)
+dim(data) 
+View(data)
 
 # 3. Selección de variables
 #Mediante la función `select` de `dplyr`, seleccionamos cada una de nuestras variables de interés y creamos una nueva base con el nombre `ene_proc`, donde "proc" hace referencia a base procesada:
-ene_proc <- select(ene, #base original
-                   c2_1_2, # horas semana
-                   sexo, tramo_edad, cine) #sexo, edad, nivel educación (CINE)
+proc <- select(data, #base original
+               tipo_cliente = 4, #Tipo de cliente
+               genero = 5, #Género
+               p_unitario = 7, #Precio unitario
+               unidades = 8, #Unidades vendidas
+               puntaje = 17, #Puntaje del cliente
+               ing_bruto = 16) #Ingresos brutos
 
-#Para saber las variables que contiene una base utilizamos `names`
-names(ene_proc)
+## Correlación entre variables cuantitativas
 
-# 4. Procesamiento de variables
+cor(proc %>% select(ing_bruto, p_unitario, unidades, puntaje))
 
-## 4.1 Descriptivos
+### Correlación alta y positiva entre ingresos brutos y precio unitario y 
+### unidades vendidas
+### Correlación positiva y cercana a cero entre p_unitario y unidades
+### Correlación negativa y cercana a cero entre puntaje del cliente e ingresos 
+### brutos, precio unitario y unidades vendidas
 
-summary(ene_proc)
-
-## 4.2 Recodificación 
-#Para recodificar utilizamos la función `recode`, de la librería `car`
-
-# Para cine
-ene_proc$cine <- car::recode(ene_proc$cine, c("c(999,888)=NA"))
-
-#Para sexo
-ene_proc$sexo <- as.numeric(ene_proc$sexo)
-ene_proc$sexo <- car::recode(ene_proc$sexo, c("'1'='Hombre';'2'='Mujer'"))
-
-#Para horas
-ene_proc$c2_1_2 <- car::recode(ene_proc$c2_1_2, c("c(999,888)=NA"))
-
-## Etiquetamiento
-ene_proc <- rename(ene_proc,
-                   "horas"=c2_1_2, #horas
-                   "n_educ" =cine) #nivel educacional
-
-# 5. Creación de variables
-#Imaginemos que queremos recodificar la variable edad en **tramos de edad**
-ene_proc$tramo_edad <- as.numeric(ene_proc$tramo_edad)
-ene_proc$t_edad <- car::recode(ene_proc$tramo_edad,
-                               c("1:4='Jovenes';5:9='Adultos';10:12='Adultos mayores'"))
-#Para verificar
-table(ene_proc$t_edad)
-
-# 6. Guardar base de datos procesada
-summary(ene_proc)
-
-save(ene_proc,file = "ene.RData")
+sjPlot::plot_scatter(proc, #Datos
+                     ing_bruto, #Eje x
+                     p_unitario, #Eje y
+                     fit.line = "lm") #Incorporar recta OLS
+sjPlot::plot_scatter(proc, 
+                     ing_bruto, 
+                     unidades,
+                     fit.line = "lm")
+sjPlot::plot_scatter(proc, 
+                     ing_bruto, 
+                     puntaje,
+                     fit.line = "lm")
 
 
-# 7. ¡Ahora te toca a ti!
-## Realiza este mismo ejercicio seleccionando y codificando variables que sean de tu interés en ENE
+proc %>% 
+  group_by(tipo_cliente) %>%#Agrupamos por tipo de cliente
+  summarise(media = mean(ing_bruto)) %>% #Para estimar diferencias promedio
+  ungroup() #Desagrupamos
+
+proc %>% 
+  group_by(genero) %>% 
+  summarise(media = mean(ing_bruto)) %>% 
+  ungroup()
+
+# 4. Estimación de modelos ------------------------------------------------
+
+## Modelo nulo
+nulo = lm(ing_bruto ~ 1, proc)
+
+summary(nulo)
+
+## Modelo simple ---------------------------------------------------------
+
+### Predictores cuantitativos
+
+m01 = lm(ing_bruto ~ p_unitario, proc)
+summary(m01)
+m02 = lm(ing_bruto ~ unidades, proc)
+summary(m02)
+m03 = lm(ing_bruto ~ puntaje, proc)
+summary(m03)
+
+### Predictores categóricos
+
+m04 = lm(ing_bruto ~ tipo_cliente, proc)
+summary(m04)
+
+m05 = lm(ing_bruto ~ genero, proc)
+summary(m05)
+
+
+## Modelo múltiple ---------------------------------------------------------
+
+m06 = lm(ing_bruto ~ p_unitario + unidades + puntaje + tipo_cliente + genero, proc)
+summary(m06)
+
+## Interacciones -----------------------------------------------------------
+
+m07 = lm(ing_bruto ~ p_unitario*unidades + puntaje + tipo_cliente + genero, proc)
+summary(m07)
+
+m08 = lm(ing_bruto ~ p_unitario + puntaje + tipo_cliente + unidades*genero, proc)
+summary(m08)
+
+## Transformaciones funcionales --------------------------------------------
+
+proc$p_unitario2 = (proc$p_unitario)^2
+sjPlot::plot_scatter(proc, 
+                     ing_bruto, 
+                     p_unitario2,
+                     fit.line = "lm")
+
+m09 = lm(ing_bruto ~ p_unitario2 + unidades + tipo_cliente + genero, proc)
+summary(m09)
+
+proc$p_unitario_log = log(proc$p_unitario)
+sjPlot::plot_scatter(proc, 
+                     ing_bruto, 
+                     p_unitario_log,
+                     fit.line = "lm")
+
+m10 = lm(ing_bruto ~ p_unitario_log + unidades + tipo_cliente + genero, proc)
+summary(m10)
+
+
+
