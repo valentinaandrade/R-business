@@ -1,4 +1,4 @@
-# Capsula 1. Procesamiento de datos
+# Capsula 1. Regresión Lineal (OLS)
 #Para correr cada línea CTRL + Enter
 
 # 1. Cargar librerías
