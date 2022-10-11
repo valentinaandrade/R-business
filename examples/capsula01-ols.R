@@ -1,14 +1,20 @@
 # Capsula 1. Regresión Lineal (OLS)
 #Para correr cada línea CTRL + Enter
 
+
+rm(list=ls())
 # 1. Cargar librerías
 #En R se debe **instalar** librerías (solo 1 vez, con `install.packages("librería")`), y luego **cargarlas** cada vez que es necesario usarlas (con `library(librería)`).
 
 install.packages("dplyr") # Para manipular bases de datos
-install.packages("sjPlot")
+install.packages("sjPlot") #Para graficar
+install.packages("broom") #Para transformar modelos en dataframe
+install.packages("writexl") #Para exportar modelos en .xlsx
 
 library(dplyr)
 library(sjPlot)
+library(broom)
+library(writexl)
 
 # 2. Cargar datos
 #En esta cápsula trabajaremos con los datos de **Supermarket sales** publicado por Aung Pyae (https://www.kaggle.com/datasets/aungpyaeap/supermarket-sales?resource=download). 
@@ -125,4 +131,60 @@ m10 = lm(ing_bruto ~ p_unitario_log + unidades + tipo_cliente + genero, proc)
 summary(m10)
 
 
+### Presentación gráfica ----------------------------------------------------
+
+sjPlot::plot_model(m10,
+                   title = "Coeficientes de regresion del modelo 10")
+
+# Exportar modelo ---------------------------------------------------------
+
+coef <- tidy(m10) 
+coef = coef %>% 
+  mutate_at(vars(2:5),
+  ~(round(., digits = 3))) %>% 
+  rename(Predictores = 1,
+         "Coef." = 2,
+         "Error Estandar" = 3,
+         "Valor t" = 4,
+         "P-valor" = 5)
+
+writexl::write_xlsx(coef, "output/modelo10.xlsx")
+
+ajuste = glance(m10) 
+ajuste = ajuste %>% 
+  mutate_all(~(round(., digits = 3))) %>% 
+  select("R2" = 1,
+         "R2 ajustado" = 2,
+         AIC, BIC,
+         "Devianza" = 10)
+
+writexl::write_xlsx(ajuste, "output/ajuste_m10.xlsx")
+
+
+# Análisis preliminar de supuestos ----------------------------------------
+
+### Valores predichos (X) y Residuos (Y)
+
+mod10 = augment(m10) #Crear objeto con valores predichos y residuos
+plot_scatter(mod10, 
+             .fitted,
+             .resid)
+
+### Valores observados en dependiente (X) y Residuos
+
+plot_scatter(mod10, 
+              ing_bruto,
+              .resid)
+
+### Valores observados en unidades (X) y residuos (Y)
+
+plot_scatter(mod10, 
+             unidades,
+             .resid)
+
+### Unidades (X) y valores predichos (Y)
+
+plot_scatter(mod10,
+             unidades, 
+             .fitted)
 

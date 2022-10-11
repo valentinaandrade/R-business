@@ -1,5 +1,6 @@
 # Capsula 2. Bondad de ajuste y análisis de supuestos para regresión lineal
 
+rm(list=ls())
 # 1. Cargar librerías
 
 install.packages("sjPlot") #Para graficar
@@ -46,7 +47,41 @@ summary(m01)$adj.r.squared
 summary(m02)$adj.r.squared
 summary(m03)$adj.r.squared
 
-# 6. Análisis de supuestos ---------------------------------------------------
+
+# 6. Exportar modelos -----------------------------------------------------
+
+# Exportar modelo ---------------------------------------------------------
+
+coef <- tidy(m03) 
+coef = coef %>% 
+  mutate_at(vars(2:5),
+            ~(round(., digits = 3))) %>% 
+  rename(Predictores = 1,
+         "Coef." = 2,
+         "Error Estandar" = 3,
+         "Valor t" = 4,
+         "P-valor" = 5)
+
+writexl::write_xlsx(coef, "output/modelo03.xlsx")
+
+ajustem01 = glance(m01) 
+ajustem02 = glance(m02) 
+ajustem03 = glance(m03) 
+
+ajuste = rbind(ajustem01, ajustem02, ajustem03)
+
+ajuste = ajuste %>% 
+  mutate_all(~(round(., digits = 3))) %>% 
+  mutate(Modelo = c("Modelo 1", "Modelo 2", "Modelo 3")) %>% 
+  select(Modelo, 
+         "R2" = 1,
+         "R2 ajustado" = 2,
+         AIC, BIC,
+         "Devianza" = 10)
+
+writexl::write_xlsx(ajuste, "output/ajuste.xlsx")
+
+# 7. Análisis de supuestos ---------------------------------------------------
 
 ## Linealidad --------------------------------------------------------------
 
